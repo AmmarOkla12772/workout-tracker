@@ -1,98 +1,535 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+// --------------------------------------------------
+// TYPES
+// --------------------------------------------------
 
-export default function HomeScreen() {
+type MuscleGroup = "chest" | "back" | "arms" | "legs" | "shoulders" | "core";
+
+type Exercise = {
+  id: number;
+  name: string;
+  weight: number;
+  reps: number;
+  muscleGroup: MuscleGroup;
+};
+
+// --------------------------------------------------
+// CHILD COMPONENT
+// --------------------------------------------------
+
+type ExerciseCardProps = {
+  exercise: Exercise;
+  onDelete: (id: number) => void;
+};
+
+function ExerciseCard({ exercise, onDelete }: ExerciseCardProps) {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View style={styles.card}>
+      <View style={styles.cardInfo}>
+        <Text style={styles.cardTitle}>{exercise.name}</Text>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        <Text style={styles.cardSubtitle}>
+          {exercise.muscleGroup.toUpperCase()}
+        </Text>
+
+        <Text style={styles.cardStats}>
+          {exercise.weight} kg × {exercise.reps} reps
+        </Text>
+      </View>
+
+      <Pressable
+        style={styles.deleteButton}
+        onPress={() => onDelete(exercise.id)}
+      >
+        <Text style={styles.deleteButtonText}>Delete</Text>
+      </Pressable>
+    </View>
   );
 }
 
+function DuplicateCard({ exercise, onDelete }: ExerciseCardProps) {
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardInfo}>
+        <Text style={styles.cardTitle}>
+          {" "}
+          Duplicate Exercise Name:{exercise.name}
+        </Text>
+
+        <Pressable
+          style={styles.deleteButton}
+          onPress={() => onDelete(exercise.id)}
+        >
+          <Text style={styles.deleteButtonText}>Delete</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+// --------------------------------------------------
+// MAIN SCREEN
+// --------------------------------------------------
+
+export default function Index() {
+  // ------------------------------------------------
+  // STATE
+  // ------------------------------------------------
+
+  const [exercises, setExercises] = useState<Exercise[]>([
+    {
+      id: 1,
+      name: "Shoulder Press",
+      muscleGroup: "shoulders",
+      weight: 45,
+      reps: 10,
+    },
+    {
+      id: 2,
+      name: "Lat Pulldown",
+      muscleGroup: "back",
+      weight: 55,
+      reps: 8,
+    },
+  ]);
+
+  const [name, setName] = useState("");
+  const [weight, setWeight] = useState("");
+  const [reps, setReps] = useState("");
+
+  const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup>("chest");
+
+  // ------------------------------------------------
+  // REF
+  // ------------------------------------------------
+
+  const nameInputRef = useRef<TextInput>(null);
+
+  // ------------------------------------------------
+  // EFFECT
+  // ------------------------------------------------
+
+  useEffect(() => {
+    console.log("Exercise list changed:", exercises.length);
+  }, [exercises]);
+
+  // ------------------------------------------------
+  // MEMO
+  // ------------------------------------------------
+
+  const totalWeight = useMemo(() => {
+    return exercises.reduce((total, exercise) => total + exercise.weight, 0);
+  }, [exercises]);
+
+  // ------------------------------------------------
+  // EVENT HANDLERS
+  // ------------------------------------------------
+
+  function addExercise() {
+    if (!name || !weight || !reps) {
+      return;
+    }
+
+    const newExercise: Exercise = {
+      id: Date.now(),
+      name: name,
+      weight: Number(weight),
+      reps: Number(reps),
+      muscleGroup: selectedMuscle,
+    };
+
+    setExercises((currentExercises) => [...currentExercises, newExercise]);
+
+    setName("");
+    setWeight("");
+    setReps("");
+
+    nameInputRef.current?.focus();
+  }
+
+  function removeExercise(id: number) {
+    setExercises((currentExercises) =>
+      currentExercises.filter((exercise) => exercise.id !== id),
+    );
+  }
+
+  function clearExercises() {
+    setExercises([]);
+  }
+
+  // ------------------------------------------------
+  // RENDER
+  // ------------------------------------------------
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.container}>
+          {/* HEADER */}
+
+          <View style={styles.header}>
+            <Text style={styles.title}>Gym Tracker</Text>
+
+            <Text style={styles.subtitle}>React Native Practice Screen</Text>
+          </View>
+
+          {/* SUMMARY */}
+
+          <View style={styles.summary}>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryNumber}>{exercises.length}</Text>
+
+              <Text style={styles.summaryLabel}>Exercises</Text>
+            </View>
+
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryNumber}>{totalWeight}</Text>
+
+              <Text style={styles.summaryLabel}>Total kg</Text>
+            </View>
+          </View>
+
+          {/* EXERCISE LIST */}
+
+          <Text style={styles.sectionTitle}>Exercises</Text>
+
+          {exercises.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>No exercises yet.</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={exercises}
+              keyExtractor={(item) => item.id.toString()}
+              scrollEnabled={false}
+              renderItem={({ item }) => (
+                //<ExerciseCard exercise={item} onDelete={removeExercise} />
+                <DuplicateCard exercise={item} onDelete={removeExercise} />
+              )}
+            />
+          )}
+
+          {/* CLEAR BUTTON */}
+
+          {exercises.length > 0 && (
+            <Pressable style={styles.clearButton} onPress={clearExercises}>
+              <Text style={styles.clearButtonText}>Clear All Exercises</Text>
+            </Pressable>
+          )}
+
+          {/* ADD EXERCISE */}
+
+          <View style={styles.form}>
+            <Text style={styles.sectionTitle}>Add Exercise</Text>
+
+            <Text style={styles.label}>Exercise name</Text>
+
+            <TextInput
+              ref={nameInputRef}
+              style={styles.input}
+              placeholder="e.g. Bench Press"
+              value={name}
+              onChangeText={setName}
+            />
+
+            <Text style={styles.label}>Weight</Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 60"
+              keyboardType="numeric"
+              value={weight}
+              onChangeText={setWeight}
+            />
+
+            <Text style={styles.label}>Reps</Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 10"
+              keyboardType="numeric"
+              value={reps}
+              onChangeText={setReps}
+            />
+
+            {/* MUSCLE GROUP */}
+
+            <Text style={styles.label}>Muscle group</Text>
+
+            <View style={styles.muscleButtons}>
+              {(
+                [
+                  "chest",
+                  "back",
+                  "arms",
+                  "legs",
+                  "shoulders",
+                  "core",
+                ] as MuscleGroup[]
+              ).map((muscle) => (
+                <Pressable
+                  key={muscle}
+                  style={[
+                    styles.muscleButton,
+                    selectedMuscle === muscle && styles.selectedMuscleButton,
+                  ]}
+                  onPress={() => setSelectedMuscle(muscle)}
+                >
+                  <Text
+                    style={[
+                      styles.muscleButtonText,
+                      selectedMuscle === muscle &&
+                        styles.selectedMuscleButtonText,
+                    ]}
+                  >
+                    {muscle}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* ADD */}
+
+            <Pressable style={styles.addButton} onPress={addExercise}>
+              <Text style={styles.addButtonText}>Add Exercise</Text>
+            </Pressable>
+          </View>
+
+          {/* PLATFORM INFO */}
+
+          <View style={styles.infoBox}>
+            <Text style={styles.infoTitle}>Platform</Text>
+
+            <Text style={styles.infoText}>
+              This app is currently running on: {Platform.OS}
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+// --------------------------------------------------
+// STYLES
+// --------------------------------------------------
+
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#f2f2f2",
+  },
+
+  keyboardView: {
+    flex: 1,
+  },
+
+  container: {
+    padding: 20,
+    paddingBottom: 50,
+  },
+
+  header: {
+    marginBottom: 20,
+  },
+
+  title: {
+    fontSize: 32,
+    fontWeight: "bold",
+  },
+
+  subtitle: {
+    fontSize: 16,
+    color: "#666",
+    marginTop: 4,
+  },
+
+  summary: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 25,
+  },
+
+  summaryItem: {
+    flex: 1,
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+
+  summaryNumber: {
+    fontSize: 28,
+    fontWeight: "bold",
+  },
+
+  summaryLabel: {
+    marginTop: 5,
+    color: "#666",
+  },
+
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 12,
+  },
+
+  card: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  cardInfo: {
+    flex: 1,
+  },
+
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+
+  cardSubtitle: {
+    fontSize: 12,
+    color: "#777",
+    marginTop: 3,
+  },
+
+  cardStats: {
+    fontSize: 15,
+    marginTop: 8,
+  },
+
+  deleteButton: {
+    backgroundColor: "#ddd",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+
+  deleteButtonText: {
+    fontWeight: "bold",
+  },
+
+  emptyBox: {
+    backgroundColor: "white",
+    padding: 25,
+    borderRadius: 12,
+    alignItems: "center",
+    marginBottom: 15,
+  },
+
+  emptyText: {
+    color: "#777",
+  },
+
+  clearButton: {
+    padding: 12,
+    alignItems: "center",
+    marginBottom: 25,
+  },
+
+  clearButtonText: {
+    color: "#777",
+  },
+
+  form: {
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 12,
+  },
+
+  label: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 6,
+    marginTop: 12,
+  },
+
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: "white",
+  },
+
+  muscleButtons: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+
+  muscleButton: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+
+  selectedMuscleButton: {
+    backgroundColor: "#222",
+    borderColor: "#222",
+  },
+
+  muscleButtonText: {
+    textTransform: "capitalize",
+  },
+
+  selectedMuscleButtonText: {
+    color: "white",
+  },
+
+  addButton: {
+    backgroundColor: "#222",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 20,
+  },
+
+  addButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+
+  infoBox: {
+    marginTop: 25,
+    padding: 15,
+    backgroundColor: "#ddd",
+    borderRadius: 10,
+  },
+
+  infoTitle: {
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+
+  infoText: {
+    color: "#555",
   },
 });
