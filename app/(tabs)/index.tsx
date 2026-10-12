@@ -41,33 +41,6 @@ function ExerciseCard({ exercise, onDelete, onToggle }: ExerciseCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.cardInfo}>
-        <Text style={styles.cardTitle}>{exercise.name}</Text>
-
-        <Text style={styles.cardSubtitle}>
-          {exercise.muscleGroup.toUpperCase()}
-        </Text>
-
-        <Text style={styles.cardStats}>
-          {exercise.weight} kg × {exercise.reps} reps
-        </Text>
-
-        <Text style={styles.cardStats}>Completed:{exercise.completed}</Text>
-      </View>
-
-      <Pressable
-        style={styles.deleteButton}
-        onPress={() => onDelete(exercise.id)}
-      >
-        <Text style={styles.deleteButtonText}>Delete</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function DuplicateCard({ exercise, onDelete, onToggle }: ExerciseCardProps) {
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardInfo}>
         <Text style={styles.cardTitle}> Exercise Name:{exercise.name}</Text>
         <Text style={styles.cardStats}>
           {exercise.completed ? "Completed" : "Not Completed"}
@@ -256,7 +229,7 @@ export default function Index() {
               scrollEnabled={false}
               renderItem={({ item }) => (
                 //<ExerciseCard exercise={item} onDelete={removeExercise} />
-                <DuplicateCard
+                <ExerciseCard
                   exercise={item}
                   onDelete={removeExercise}
                   onToggle={toggleCompletion}
