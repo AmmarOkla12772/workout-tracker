@@ -23,6 +23,7 @@ type Exercise = {
   name: string;
   weight: number;
   reps: number;
+  completed: boolean;
   muscleGroup: MuscleGroup;
 };
 
@@ -33,9 +34,10 @@ type Exercise = {
 type ExerciseCardProps = {
   exercise: Exercise;
   onDelete: (id: number) => void;
+  onToggle: (id: number) => void;
 };
 
-function ExerciseCard({ exercise, onDelete }: ExerciseCardProps) {
+function ExerciseCard({ exercise, onDelete, onToggle }: ExerciseCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.cardInfo}>
@@ -48,6 +50,8 @@ function ExerciseCard({ exercise, onDelete }: ExerciseCardProps) {
         <Text style={styles.cardStats}>
           {exercise.weight} kg × {exercise.reps} reps
         </Text>
+
+        <Text style={styles.cardStats}>Completed:{exercise.completed}</Text>
       </View>
 
       <Pressable
@@ -60,22 +64,28 @@ function ExerciseCard({ exercise, onDelete }: ExerciseCardProps) {
   );
 }
 
-function DuplicateCard({ exercise, onDelete }: ExerciseCardProps) {
+function DuplicateCard({ exercise, onDelete, onToggle }: ExerciseCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.cardInfo}>
-        <Text style={styles.cardTitle}>
-          {" "}
-          Duplicate Exercise Name:{exercise.name}
+        <Text style={styles.cardTitle}> Exercise Name:{exercise.name}</Text>
+        <Text style={styles.cardStats}>
+          {exercise.completed ? "Completed" : "Not Completed"}
         </Text>
-
-        <Pressable
-          style={styles.deleteButton}
-          onPress={() => onDelete(exercise.id)}
-        >
-          <Text style={styles.deleteButtonText}>Delete</Text>
-        </Pressable>
       </View>
+      <Pressable
+        style={styles.deleteButton}
+        onPress={() => onDelete(exercise.id)}
+      >
+        <Text style={styles.deleteButtonText}>Delete</Text>
+      </Pressable>
+
+      <Pressable
+        style={styles.deleteButton}
+        onPress={() => onToggle(exercise.id)}
+      >
+        <Text>Toggle Completion</Text>
+      </Pressable>
     </View>
   );
 }
@@ -96,6 +106,7 @@ export default function Index() {
       muscleGroup: "shoulders",
       weight: 45,
       reps: 10,
+      completed: true,
     },
     {
       id: 2,
@@ -103,6 +114,7 @@ export default function Index() {
       muscleGroup: "back",
       weight: 55,
       reps: 8,
+      completed: false,
     },
   ]);
 
@@ -139,7 +151,14 @@ export default function Index() {
   // ------------------------------------------------
 
   function addExercise() {
-    if (!name || !weight || !reps) {
+    if (
+      !name.trim() ||
+      Number(reps) <= 0 ||
+      Number(weight) <= 0 ||
+      !Number.isFinite(Number(reps)) ||
+      !Number.isFinite(Number(weight)) ||
+      !Number.isInteger(Number(reps))
+    ) {
       return;
     }
 
@@ -149,6 +168,7 @@ export default function Index() {
       weight: Number(weight),
       reps: Number(reps),
       muscleGroup: selectedMuscle,
+      completed: false,
     };
 
     setExercises((currentExercises) => [...currentExercises, newExercise]);
@@ -163,6 +183,16 @@ export default function Index() {
   function removeExercise(id: number) {
     setExercises((currentExercises) =>
       currentExercises.filter((exercise) => exercise.id !== id),
+    );
+  }
+
+  function toggleCompletion(id: number) {
+    setExercises((currentExercises) =>
+      currentExercises.map((exercise) =>
+        exercise.id === id
+          ? { ...exercise, completed: !exercise.completed }
+          : exercise,
+      ),
     );
   }
 
@@ -194,14 +224,20 @@ export default function Index() {
           <View style={styles.summary}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryNumber}>{exercises.length}</Text>
-
               <Text style={styles.summaryLabel}>Exercises</Text>
             </View>
 
             <View style={styles.summaryItem}>
               <Text style={styles.summaryNumber}>{totalWeight}</Text>
-
               <Text style={styles.summaryLabel}>Total kg</Text>
+            </View>
+
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryNumber}>
+                {exercises.filter((exercise) => exercise.completed).length}/
+                {exercises.length}
+              </Text>
+              <Text style={styles.summaryLabel}>Completed</Text>
             </View>
           </View>
 
@@ -220,7 +256,11 @@ export default function Index() {
               scrollEnabled={false}
               renderItem={({ item }) => (
                 //<ExerciseCard exercise={item} onDelete={removeExercise} />
-                <DuplicateCard exercise={item} onDelete={removeExercise} />
+                <DuplicateCard
+                  exercise={item}
+                  onDelete={removeExercise}
+                  onToggle={toggleCompletion}
+                />
               )}
             />
           )}
